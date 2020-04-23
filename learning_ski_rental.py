@@ -29,8 +29,6 @@ def get_adv_loss(b_pred,x_pred,b_t,x_t) :
 			w.append(1)
 	return np.array(w)
 
-# We assume that one of the experts is true
-
 T = 10000
 num_experts = 1000
 B_max = 4
@@ -55,7 +53,7 @@ for sigma in sigmas :
 		b_pred = b_pred + eps_b
 		eps_x = np.random.normal(mu,sigma,num_experts)
 		#b_pred = b_true[t] + eps
-		x_pred = np.random.uniform(low=0,high=2*B_max,size=num_experts)
+		x_pred = np.random.uniform(low=B_min,high=2*B_max,size=num_experts)
 		x_pred = x_pred + eps_x
 		#b_pred[true_exp] = b_true[t]
 		#x_pred[true_exp] = x_adv[t]
@@ -77,3 +75,31 @@ plt.xlabel('Time')
 plt.ylabel('Regret')
 plt.grid('True')
 plt.show()
+
+###################### Want to test if the advice is strategies(predicted x and a certain lambda) #######################
+
+# sigmas already declared before
+
+def get_adv_strat_loss()
+
+for sigma in sigmas :
+	b_true = np.random.uniform(low=B_min,high=B_max,size=T)
+	x_adv = np.random.uniform(low=B_min,high=2*B_max,size=T)
+	w_t = np.ones(num_experts)
+	regret = []
+	cumul_m = np.zeros(num_experts)
+	for t in range(T) :
+		lam_pred = np.random.uniform(low=0.0,high=1.0,size=num_experts) # The strategy predictions by each expert
+		eps_b = np.random.normal(mu,sigma,num_experts)
+		x_pred = np.random.uniform(low=B_min,high=2*B_max,size=num_experts)
+		x_pred = x_pred + eps_b # Number of skiing days prediction by each expert
+		b_t = b_true[t] # The buy price for the current timestep
+		x_t = x_adv[t] # The number of skiing days for the current timestep(not aware to the experts)
+		p_t = w_t / np.sum(w_t)
+		# get adversary loss for each expert
+		m = get_adv_strat_loss()
+		w_t = w_t * np.exp(-eps*m)
+		loss += np.dot(p_t,m)
+		cumul_m = cumul_m + m
+		min_loss = np.amin(cumul_m)
+		regret.append(loss-min_loss)
