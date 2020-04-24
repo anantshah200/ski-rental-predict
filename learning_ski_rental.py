@@ -80,26 +80,29 @@ plt.show()
 
 # sigmas already declared before
 
-def get_adv_strat_loss()
+#def get_adv_strat_loss(lam_pred,xx_pred,b_t,x_t) :
+#	# lambda corresponds to the paper by Purohit et al
 
-for sigma in sigmas :
-	b_true = np.random.uniform(low=B_min,high=B_max,size=T)
-	x_adv = np.random.uniform(low=B_min,high=2*B_max,size=T)
-	w_t = np.ones(num_experts)
-	regret = []
-	cumul_m = np.zeros(num_experts)
-	for t in range(T) :
-		lam_pred = np.random.uniform(low=0.0,high=1.0,size=num_experts) # The strategy predictions by each expert
-		eps_b = np.random.normal(mu,sigma,num_experts)
-		x_pred = np.random.uniform(low=B_min,high=2*B_max,size=num_experts)
-		x_pred = x_pred + eps_b # Number of skiing days prediction by each expert
-		b_t = b_true[t] # The buy price for the current timestep
-		x_t = x_adv[t] # The number of skiing days for the current timestep(not aware to the experts)
-		p_t = w_t / np.sum(w_t)
-		# get adversary loss for each expert
-		m = get_adv_strat_loss()
-		w_t = w_t * np.exp(-eps*m)
-		loss += np.dot(p_t,m)
-		cumul_m = cumul_m + m
-		min_loss = np.amin(cumul_m)
-		regret.append(loss-min_loss)
+#for sigma in sigmas :
+#	b_true = np.random.uniform(low=B_min,high=B_max,size=T)
+#	x_adv = np.random.uniform(low=B_min,high=2*B_max,size=T)
+#	w_t = np.ones(num_experts)
+#	regret = []
+#	cumul_m = np.zeros(num_experts)
+#	for t in range(T) :
+#		lam_pred = np.random.uniform(low=0.0,high=1.0,size=num_experts) # The strategy predictions by each expert
+#		eps_b = np.random.normal(mu,sigma,num_experts)
+#		x_pred = np.random.uniform(low=B_min,high=2*B_max,size=num_experts)
+#		x_pred = x_pred + eps_b # Number of skiing days prediction by each expert
+#		b_t = b_true[t] # The buy price for the current timestep
+#		x_t = x_adv[t] # The number of skiing days for the current timestep(not aware to the experts)
+#		p_t = w_t / np.sum(w_t)
+#		# get adversary loss for each expert
+#		m = get_adv_strat_loss(lam_pred,x_pred,b_t,x_t)
+#		w_t = w_t * np.exp(-eps*m)
+#		loss += np.dot(p_t,m)
+#		cumul_m = cumul_m + m
+#		min_loss = np.amin(cumul_m)
+#		regret.append(loss-min_loss)
+
+# Check the dependence of the regret on the lambda parameters. In the paper by Purohit et al, the deterministic and ranodmized algorithm have  a consistency and robustness tradeoff as a function of the parameter lambda. Now we want to see in the online learning setup what is the dependence of the regret on this parameter lambda. At each time-step we have a set of predictors, predicting the number of ski-ing days and some predicting the buy cost. Split them into bins with each bin having a certain standard deviation. Now sample a certain buy cost(b') and based on the predictions run the algorithm by Purohit et al. Compare this loss to the true algorithm whether to rent for all or buy at day 0 and check the regret. Compare for different values of lambda, check the effect of number of experts. Check the effect of standard deviation etc.
