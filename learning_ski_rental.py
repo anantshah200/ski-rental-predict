@@ -106,3 +106,10 @@ plt.show()
 #		regret.append(loss-min_loss)
 
 # Check the dependence of the regret on the lambda parameters. In the paper by Purohit et al, the deterministic and ranodmized algorithm have  a consistency and robustness tradeoff as a function of the parameter lambda. Now we want to see in the online learning setup what is the dependence of the regret on this parameter lambda. At each time-step we have a set of predictors, predicting the number of ski-ing days and some predicting the buy cost. Split them into bins with each bin having a certain standard deviation. Now sample a certain buy cost(b') and based on the predictions run the algorithm by Purohit et al. Compare this loss to the true algorithm whether to rent for all or buy at day 0 and check the regret. Compare for different values of lambda, check the effect of number of experts. Check the effect of standard deviation etc.
+
+b_wt = np.ones(num_experts)
+x_wt = np.ones(num_experts)
+lam = 0.5
+
+for t in range(T) :
+	# Get the b' predictions.
