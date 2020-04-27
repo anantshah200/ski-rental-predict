@@ -107,19 +107,81 @@ plt.show()
 
 # Check the dependence of the regret on the lambda parameters. In the paper by Purohit et al, the deterministic and ranodmized algorithm have  a consistency and robustness tradeoff as a function of the parameter lambda. Now we want to see in the online learning setup what is the dependence of the regret on this parameter lambda. At each time-step we have a set of predictors, predicting the number of ski-ing days and some predicting the buy cost. Split them into bins with each bin having a certain standard deviation. Now sample a certain buy cost(b') and based on the predictions run the algorithm by Purohit et al. Compare this loss to the true algorithm whether to rent for all or buy at day 0 and check the regret. Compare for different values of lambda, check the effect of number of experts. Check the effect of standard deviation etc.
 
+def get_pred_loss(b_t,x_t,b_sample,x_pred) :
+	"Function to obtain the loss"
+	# Arguments : b_t : The true buy cost
+	#	      x_t : The true numbe of ski-ing days
+	#	      b_sample : The value of buy-cost sampled. Not equal to the true buy cost
+	#	      x_pred : The predictions for the number of ski-days by the experts
+
+	# First obtain the optimal value that could be suffered by the agent
+	if b_t >= x_t :
+		opt = x_t
+	elif b_t < x_t :
+		opt = b_t
+	
+	# Now cost incurred if we follow each expert(here we follow the randomized algorithm by Purohit et al.)
+	for expert in range(num_experts) :
+		if x_pred[expert] >= b_sample :
+			k = np.floor(lam*b_sample)
+			ind = np.arange(1,k+1)
+			p_x = np.power((b_sample-1)/b_sample,k-ind)*(1.0/(b_sample*(1-np.power((1-1/b_sample),k))))
+			P_x = np.cumsum(p_x)
+			rand_num = random.uniform(0,1)
+			buy_day = 1
+			for i in range(int(k)-1) :
+				if rand_num>=P_x[i] and rand_num<P_x[i+1] :
+					buy_day = i + 2
+					break
+			if x_t>=buy_day :
+				alg = b_t + buy_day - 1 # When we are actually buying we incur the true cost
+			else :
+				alg = x_t
+		elif x_pred[exxpert] < b_sample :
+			l = np.ceil(b_sample/lam)
+			ind = np.arange(1,l+1)
+			p_x = np.power((b_sample-1)/b_sample,l-ind)*(1.0/(b_sample*(1-np.power((1-1/b_sample),l))))
+			P_x = np.cumsum(p_x)
+			rand_num = random.uniform(0,1)
+			buy_day = 1
+			for i in range(int(l)-1) :
+				if rand_num>=P_x[i] and rand_num<P_x[i+1] :
+					buy_day = i + 2
+					break
+			if x_t >= buy_day :
+				alg = b_t + buy_day - 1
+			else : 
+				alg = x
+
+			
 b_wt = np.ones(num_experts)
 x_wt = np.ones(num_experts)
-lam = 0.5
+lam = 0.5 # Based on the algorithm by Purohit et al
 
 b_true = np.random.uniform(low=B_min,high=B_max,size=T)
 x_adv = np.random.uniform(low=B_min,high=4*B_max,size=T)
 num_bins = 2 # Categorize the experts into bins based on their error of prediction
 bin_ind = []
 rand_bins = np.random.permutation(num_experts)
+sigmas = [1,10] # The number of sigmas will be equal to the number of bins
+num_buy = 50
 
 for i in range(num_bins) :
 	bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)])
 
+eps_x = np.zeros(num_experts) # The noise for the skiing days predictions
+
+b_pred = np.linspace(B_min,B_max,num_buy,endpoint=True) # These are like arms and at each timestep we uniformly sample from one of these arms
+b_index = np.random.randint(num_buy,size=T)
+
 for t in range(T) :
 	# Get the b' predictions.
-	
+	for i in range(num_bins) :
+		eps_x[bin_ind[i]] = np.random.normal(mean=0.0,sigma=sigmas[i],int(num_experts/num_bins))
+	# Sample the b' prediction
+	x_pred = x_adv[t] + eps_x # The predicitons by the experts for the current time-instant
+	b_sample = b_pred[b_index[t]] # The buy cost sampled for the current time-instant. Algorithm sees this buy cost and not the true cost
+	# now use algorithm by Purohit et al. to obsreve the loss and compare to the optimal
+	b_t = b_true[t] # The true buy cost at the current time instant
+	x_t = x_adv[t] # The true number of ski-ing days. Not known to the algorithm. Used to calculate optimal cost
+	m = get_pred_loss(b_t,x_t,b_sample,x_pred)
