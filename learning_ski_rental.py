@@ -111,5 +111,15 @@ b_wt = np.ones(num_experts)
 x_wt = np.ones(num_experts)
 lam = 0.5
 
+b_true = np.random.uniform(low=B_min,high=B_max,size=T)
+x_adv = np.random.uniform(low=B_min,high=4*B_max,size=T)
+num_bins = 2 # Categorize the experts into bins based on their error of prediction
+bin_ind = []
+rand_bins = np.random.permutation(num_experts)
+
+for i in range(num_bins) :
+	bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)])
+
 for t in range(T) :
 	# Get the b' predictions.
+	
