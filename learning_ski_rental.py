@@ -107,8 +107,8 @@ plt.show()
 
 # Check the dependence of the regret on the lambda parameters. In the paper by Purohit et al, the deterministic and ranodmized algorithm have  a consistency and robustness tradeoff as a function of the parameter lambda. Now we want to see in the online learning setup what is the dependence of the regret on this parameter lambda. At each time-step we have a set of predictors, predicting the number of ski-ing days and some predicting the buy cost. Split them into bins with each bin having a certain standard deviation. Now sample a certain buy cost(b') and based on the predictions run the algorithm by Purohit et al. Compare this loss to the true algorithm whether to rent for all or buy at day 0 and check the regret. Compare for different values of lambda, check the effect of number of experts. Check the effect of standard deviation etc.
 
-def get_pred_loss(b_t,x_t,b_sample,x_pred) :
-	"Function to obtain the loss"
+def get_pred_loss_rand(b_t,x_t,b_sample,x_pred) :
+	"Function to obtain the loss based on the randomized algorithm"
 	# Arguments : b_t : The true buy cost
 	#	      x_t : The true numbe of ski-ing days
 	#	      b_sample : The value of buy-cost sampled. Not equal to the true buy cost
@@ -116,10 +116,12 @@ def get_pred_loss(b_t,x_t,b_sample,x_pred) :
 
 	# First obtain the optimal value that could be suffered by the agent
 	if b_t >= x_t :
-		opt = x_t
+		opt = x_t # rent for all days
 	elif b_t < x_t :
-		opt = b_t
+		opt = b_t # buy at day 0
 	
+	m = [] # Mistake vector that stores the ratio for each expert
+
 	# Now cost incurred if we follow each expert(here we follow the randomized algorithm by Purohit et al.)
 	for expert in range(num_experts) :
 		if x_pred[expert] >= b_sample :
@@ -137,7 +139,7 @@ def get_pred_loss(b_t,x_t,b_sample,x_pred) :
 				alg = b_t + buy_day - 1 # When we are actually buying we incur the true cost
 			else :
 				alg = x_t
-		elif x_pred[exxpert] < b_sample :
+		elif x_pred[expert] < b_sample :
 			l = np.ceil(b_sample/lam)
 			ind = np.arange(1,l+1)
 			p_x = np.power((b_sample-1)/b_sample,l-ind)*(1.0/(b_sample*(1-np.power((1-1/b_sample),l))))
@@ -151,11 +153,46 @@ def get_pred_loss(b_t,x_t,b_sample,x_pred) :
 			if x_t >= buy_day :
 				alg = b_t + buy_day - 1
 			else : 
-				alg = x
+				alg = x_t
+		loss = alg/opt # The competitive ratio
+		m.append(loss)
+	return m # Note that all losses will be greater than 1. The best case scenario will be when the ratio is 1
 
-			
-b_wt = np.ones(num_experts)
-x_wt = np.ones(num_experts)
+def get_pred_loss_det(b_t,x_t,b_sample,x_pred) :
+	"Function to get the loss for the deterministic algorithm"
+	# Arguments :   b_t : The true buy cost at the current time instant
+	#		x_t : The true number of ski-ing days at the current instant
+	#		b_sample : The buy cost sampled for the current instant(not the true buy cost)
+	#		x_pred : The vector of predictions for the number of ski-ing days
+
+	# Optimal cost suffered by the agent
+	if b_t >= x_t :
+		opt = x_t # Rent for all days
+	else :
+		opt = b_t # Buy at day 0
+
+	m = [] # The loss for each expert
+
+	# Cost of following each expert
+	for expert in range(num_experts) :
+		if x_pred[expert] >= b_sample :
+			buy_day = np.ceil(lam*b_sample)
+			if x_t >= buy_day :
+				alg = b_t + buy_day - 1
+			else :
+				alg = x_t
+		elif x_pred[expert] < b_sample :
+			buy_day = np.ceil(b_sample/lam)
+			if x_t >= buy_day :
+				alg = b_t + buy_day - 1
+			else :
+				alg = x_t
+		loss = alg / opt
+		m.append(loss)
+
+	return m
+
+wt = np.ones(num_experts)
 lam = 0.5 # Based on the algorithm by Purohit et al
 
 b_true = np.random.uniform(low=B_min,high=B_max,size=T)
@@ -173,6 +210,8 @@ eps_x = np.zeros(num_experts) # The noise for the skiing days predictions
 
 b_pred = np.linspace(B_min,B_max,num_buy,endpoint=True) # These are like arms and at each timestep we uniformly sample from one of these arms
 b_index = np.random.randint(num_buy,size=T)
+loss = 0.0
+regret = []
 
 for t in range(T) :
 	# Get the b' predictions.
@@ -184,4 +223,17 @@ for t in range(T) :
 	# now use algorithm by Purohit et al. to obsreve the loss and compare to the optimal
 	b_t = b_true[t] # The true buy cost at the current time instant
 	x_t = x_adv[t] # The true number of ski-ing days. Not known to the algorithm. Used to calculate optimal cost
-	m = get_pred_loss(b_t,x_t,b_sample,x_pred)
+	p_t = w_t/np.sum(w_t)
+	m = get_pred_loss_rand(b_t,x_t,b_sample,x_pred) # Vector of competitive ratios
+	loss += np.dot(p_t,m)
+	# Note that a higher ratio implies a larger loss so we should the decrease the weight of that expert more
+	w_t = w_t * np.exp(-eps*m)
+	cumul_m = cumul_m + m
+	min_loss = np.amin(cumul_m)
+	regret.append(loss-min_loss)
+
+plt.plot(range(1,T+1),regret)
+plt.xlabel('Time')
+plt.ylabel('Regret')
+plt.grid('True')
+plt.show()
