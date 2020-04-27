@@ -31,50 +31,50 @@ def get_adv_loss(b_pred,x_pred,b_t,x_t) :
 
 T = 10000
 num_experts = 1000
-B_max = 4
-B_min = 1
+B_max = 100
+B_min = 50
 eps = np.sqrt(np.log(num_experts)/T)
 mu = 0.0
 sigmas = [0.5,1,1.5,2]
 
 sigma_regret = []
 
-for sigma in sigmas :
-	b_true = np.random.uniform(low=B_min,high=B_max,size=T)
-	x_adv = np.random.uniform(low=B_min,high=2*B_max,size=T)
-	loss = 0.0
-	true_exp = np.random.randint(low=0,high=num_experts,size=1)
-	w_t = np.ones(num_experts)
-	regret = []
-	cumul_m = np.zeros(num_experts) # Keep a track on the mistakes by each expert
-	for t in range(T) :
-		b_pred = np.random.uniform(low=B_min,high=B_max,size=num_experts)
-		eps_b = np.random.normal(mu,sigma,num_experts)
-		b_pred = b_pred + eps_b
-		eps_x = np.random.normal(mu,sigma,num_experts)
-		#b_pred = b_true[t] + eps
-		x_pred = np.random.uniform(low=B_min,high=2*B_max,size=num_experts)
-		x_pred = x_pred + eps_x
-		#b_pred[true_exp] = b_true[t]
-		#x_pred[true_exp] = x_adv[t]
-		p_t = w_t / np.sum(w_t)
-		# Calculate the cost vector <m>
-		m = get_adv_loss(b_pred,x_pred,b_true[t],x_adv[t])
-		w_t = w_t * np.exp(-eps*m)
-		loss += np.dot(p_t,m)
-		cumul_m = cumul_m + m
-		min_loss = np.amin(cumul_m)
-		# We have a true expert so the loss we are comparing with is basically 0
-		regret.append(loss-min_loss)
-	sigma_regret.append(regret)
-	
-for i in range(len(sigmas)) :
-	plt.plot(range(1,T+1),sigma_regret[i])
-plt.legend([r'$\sigma=0.5$',r'$\sigma=1.0$',r'$\sigma=1.5$',r'$\sigma=2.0$'])
-plt.xlabel('Time')
-plt.ylabel('Regret')
-plt.grid('True')
-plt.show()
+#for sigma in sigmas :
+#	b_true = np.random.uniform(low=B_min,high=B_max,size=T)
+#	x_adv = np.random.uniform(low=B_min,high=2*B_max,size=T)
+#	loss = 0.0
+#	true_exp = np.random.randint(low=0,high=num_experts,size=1)
+#	w_t = np.ones(num_experts)
+#	regret = []
+#	cumul_m = np.zeros(num_experts) # Keep a track on the mistakes by each expert
+#	for t in range(T) :
+#		b_pred = np.random.uniform(low=B_min,high=B_max,size=num_experts)
+#		eps_b = np.random.normal(mu,sigma,num_experts)
+#		b_pred = b_pred + eps_b
+#		eps_x = np.random.normal(mu,sigma,num_experts)
+#		#b_pred = b_true[t] + eps
+#		x_pred = np.random.uniform(low=B_min,high=2*B_max,size=num_experts)
+#		x_pred = x_pred + eps_x
+#		#b_pred[true_exp] = b_true[t]
+#		#x_pred[true_exp] = x_adv[t]
+#		p_t = w_t / np.sum(w_t)
+#		# Calculate the cost vector <m>
+#		m = get_adv_loss(b_pred,x_pred,b_true[t],x_adv[t])
+#		w_t = w_t * np.exp(-eps*m)
+#		loss += np.dot(p_t,m)
+#		cumul_m = cumul_m + m
+#		min_loss = np.amin(cumul_m)
+#		# We have a true expert so the loss we are comparing with is basically 0
+#		regret.append(loss-min_loss)
+#	sigma_regret.append(regret)
+#	
+#for i in range(len(sigmas)) :
+#	plt.plot(range(1,T+1),sigma_regret[i])
+#plt.legend([r'$\sigma=0.5$',r'$\sigma=1.0$',r'$\sigma=1.5$',r'$\sigma=2.0$'])
+#plt.xlabel('Time')
+#plt.ylabel('Regret')
+#plt.grid('True')
+#plt.show()
 
 ###################### Want to test if the advice is strategies(predicted x and a certain lambda) #######################
 
@@ -156,7 +156,7 @@ def get_pred_loss_rand(b_t,x_t,b_sample,x_pred) :
 				alg = x_t
 		loss = alg/opt # The competitive ratio
 		m.append(loss)
-	return m # Note that all losses will be greater than 1. The best case scenario will be when the ratio is 1
+	return np.array(m) # Note that all losses will be greater than 1. The best case scenario will be when the ratio is 1
 
 def get_pred_loss_det(b_t,x_t,b_sample,x_pred) :
 	"Function to get the loss for the deterministic algorithm"
@@ -190,17 +190,17 @@ def get_pred_loss_det(b_t,x_t,b_sample,x_pred) :
 		loss = alg / opt
 		m.append(loss)
 
-	return m
+	return np.array(m)
 
-wt = np.ones(num_experts)
+w_t = np.ones(num_experts)
 lam = 0.5 # Based on the algorithm by Purohit et al
 
-b_true = np.random.uniform(low=B_min,high=B_max,size=T)
-x_adv = np.random.uniform(low=B_min,high=4*B_max,size=T)
+b_true = np.random.randint(low=B_min,high=B_max,size=T)
+x_adv = np.random.randint(low=1,high=4*B_max,size=T)
 num_bins = 2 # Categorize the experts into bins based on their error of prediction
 bin_ind = []
 rand_bins = np.random.permutation(num_experts)
-sigmas = [1,10] # The number of sigmas will be equal to the number of bins
+sigmas = [1,20] # The number of sigmas will be equal to the number of bins
 num_buy = 50
 
 for i in range(num_bins) :
@@ -212,11 +212,12 @@ b_pred = np.linspace(B_min,B_max,num_buy,endpoint=True) # These are like arms an
 b_index = np.random.randint(num_buy,size=T)
 loss = 0.0
 regret = []
+cumul_m = np.zeros(num_experts)
 
 for t in range(T) :
 	# Get the b' predictions.
 	for i in range(num_bins) :
-		eps_x[bin_ind[i]] = np.random.normal(mean=0.0,sigma=sigmas[i],int(num_experts/num_bins))
+		eps_x[bin_ind[i]] = np.random.normal(0.0,sigmas[i],int(num_experts/num_bins))
 	# Sample the b' prediction
 	x_pred = x_adv[t] + eps_x # The predicitons by the experts for the current time-instant
 	b_sample = b_pred[b_index[t]] # The buy cost sampled for the current time-instant. Algorithm sees this buy cost and not the true cost
