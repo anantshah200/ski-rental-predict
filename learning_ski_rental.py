@@ -107,7 +107,7 @@ sigma_regret = []
 
 #################################################
 
-# Check the dependence of the regret on the lambda parameters. In the paper by Purohit et al, the deterministic and ranodmized algorithm have  a consistency and robustness tradeoff as a function of the parameter lambda. Now we want to see in the online learning setup what is the dependence of the regret on this parameter lambda. At each time-step we have a set of predictors, predicting the number of ski-ing days and some predicting the buy cost. Split them into bins with each bin having a certain standard deviation. Now sample a certain buy cost(b') and based on the predictions run the algorithm by Purohit et al. Compare this loss to the true algorithm whether to rent for all or buy at day 0 and check the regret. Compare for different values of lambda, check the effect of number of experts. Check the effect of standard deviation etc.
+# Check the dependence of the regret on the lambda parameters. In the paper by Purohit et al, the deterministic and ranodmized algorithm have  a consistency and robustness tradeoff as a function of the parameter lambda. Now we want to see in the online learning setup what is the dependence of the regret on this parameter lambda. At each time-step we have a set of predictors, predicting the number of ski-ing days and some predicting the buy cost. Split them into bins with each bin having a certain standard deviation. Now sample a certain buy cost(b') and based on the predictions run the algorithm by Purohit et al. Compare this loss to the true algorithm whether to rent for all or buy at day 0 and check the regret. Compare for different values of lambda, check the effect of number of experts. Check the effect of standard deviation etc. We need to get the predictions for the number of ski-ing days, not randomly sample as there is no relation in the current implementation. Take an average of the prediction based on the weights and then give that to all the experts predicting the ski-days.
 
 def get_pred_loss_rand(b_t,x_t,b_sample,x_pred,lam) :
 	"Function to obtain the loss based on the randomized algorithm"
@@ -200,28 +200,39 @@ def get_pred_loss_det(b_t,x_t,b_sample,x_pred,lam) :
 lam = 0.7
 b_true = np.random.randint(low=B_min,high=B_max,size=T)
 x_adv = np.random.randint(low=1,high=4*B_max,size=T)
-#num_bins = 2 # Categorize the experts into bins based on their error of prediction
-bin_vals = [2,4,8,20]
-bin_ind = []
-rand_bins = np.random.permutation(num_experts)
+num_bins = 5 # Categorize the experts into bins based on their error of prediction
+#bin_vals = [2,4,8,20]
+#bin_ind = []
+#rand_bins = np.random.permutation(num_experts)
 #sigmas = [1,20] # The number of sigmas will be equal to the number of bins
-num_buy = 50
+#num_buy = 50
 
 #for i in range(num_bins) :
 #	bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)])
 
-eps_x = np.zeros(num_experts) # The noise for the skiing days predictions
+#eps_x = np.zeros(num_experts) # The noise for the skiing days predictions
 
-b_pred = np.linspace(B_min,B_max,num_buy,endpoint=True) # These are like arms and at each timestep we uniformly sample from one of these arms
-b_index = np.random.randint(num_buy,size=T) # Which arm to sample at each time instant
+#b_pred = np.linspace(B_min,B_max,num_buy,endpoint=True) # These are like arms and at each timestep we uniformly sample from one of these arms
+#b_index = np.random.randint(num_buy,size=T) # Which arm to sample at each time instant
 #loss = 0.0
 #regret = []
 #cumul_m = np.zeros(num_experts)
 lam_regret = []
+expert_range = [1000] # Experts for predicting the number of ski-ing days
+buy_experts = 500 # The experts predicting the buy cost
+buy_num_bins = 5 # The numbers of bins the buy experts will be binned into
+b_sigmas = np.linspace(1,20,buy_num_bins) # The standard deviaiot of error for the bins for the experts predicting buy costs
+buy_rand_bins = np.random.permutation(buy_experts) # How we divide these bins
+buy_bin_ind = [] # To store the bin indices
 
-for num_bins in bin_vals :
-	#b_pred = np.linspace(B_min,B_max,num_buy,endpoint=True) # These are like arms at each timestep we uniformly sample from one of these arms
-	#b_index = np.random.randint(num_buy,size=T)
+for i in range(buy_num_bins) :
+	buy_bin_ind.append(buy_rand_bins[int(i*buy_experts/buy_num_bins):int((i+1)*buy_experts/buy_num_bins)])
+
+for num_experts in expert_range :
+
+	rand_bins = np.random.permutation(num_experts)
+	eps_x = np.zeros(num_experts)
+	eps_b = np.zeros(buy_experts)
 	bin_ind = []
 	for i in range(num_bins) :
 		bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)]) 
@@ -229,36 +240,42 @@ for num_bins in bin_vals :
 	sigmas = np.linspace(1,20,num_bins)
 	regret = []
 	cumul_m = np.zeros(num_experts)
-	w_t = np.ones(num_experts)
+	w_t = np.ones(num_experts) # weights for the experts predicting the number of ski-ing days
+	b_t = np.ones(buy_experts) # weights for experts predicting the buy cost of the ski-is
 	for t in range(T) :
-		# Get the b' predictions.
+
 		for i in range(num_bins) :
 			eps_x[bin_ind[i]] = np.random.normal(0.0,sigmas[i],int(num_experts/num_bins))
+		for i in range(buy_num_bins) :
+			eps_b[buy_bin_ind[i]] = np.random.normal(0.0,b_sigmas[i],int(buy_experts/buy_num_bins))
+		b_pred = b_true[t] + eps_b # The predictions of the buy cost
+		b_sample = np.dot(b_t/np.sum(b_t),b_pred) # The weighted average will give us a predicted buy cost
 		# Sample the b' prediction
 		x_pred = x_adv[t] + eps_x # The predicitons by the experts for the current time-instant
-		b_sample = b_pred[b_index[t]] # The buy cost sampled for the current time-instant. Algorithm sees this buy cost and not the true cost
+
 		# now use algorithm by Purohit et al. to obsreve the loss and compare to the optimal
 		b_t = b_true[t] # The true buy cost at the current time instant
 		x_t = x_adv[t] # The true number of ski-ing days. Not known to the algorithm. Used to calculate optimal cost
 		p_t = w_t/np.sum(w_t)
+
 		m = get_pred_loss_rand(b_t,x_t,b_sample,x_pred,lam) # Vector of competitive ratios
+
 		loss += np.dot(p_t,m)
 		# Note that a higher ratio implies a larger loss so we should the decrease the weight of that expert more
 		w_t = w_t * np.exp(-eps*m)
+		b_t = b_t * np.exp(-eps*np.power((b_pred-b_t),2))
 		cumul_m = cumul_m + m
 		min_loss = np.amin(cumul_m)
 		regret.append(loss-min_loss)
 	lam_regret.append(regret)
-	for i in range(num_bins) :
-		print(np.sum(p_t[bin_ind[i]]))
 
 # Expect to be in descending order
-#for i in range(num_bins) :
-#	print(np.sum(p_t[bin_ind[i]]))
+for i in range(num_bins) :
+	print(np.sum(p_t[bin_ind[i]]))
 
 for i in range(len(lam_regret)) :
 	plt.plot(range(1,T+1),lam_regret[i])
-plt.legend([r'bins = 2',r'bins=4',r'bins=8',r'bins=20'])
+plt.legend([r'experts = 5',r'experts=50',r'experts=250',r'experts=1000'])
 plt.xlabel('Time')
 plt.ylabel('Regret')
 plt.grid('True')
