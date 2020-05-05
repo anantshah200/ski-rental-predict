@@ -215,9 +215,9 @@ lam_regret = []
 #expert_range = [100] # Experts for predicting the number of ski-ing days
 num_experts = 100
 eps = np.sqrt(np.log(num_experts)/T)
-buy_experts = 1000 # The experts predicting the buy cost
+buy_experts = 500 # The experts predicting the buy cost
 eta_b = np.sqrt(np.log(buy_experts)/T)
-buy_num_bins = 50 # The numbers of bins the buy experts will be binned into
+buy_num_bins = 5 # The numbers of bins the buy experts will be binned into
 b_sigmas = np.linspace(1,20,buy_num_bins) # The standard deviaiot of error for the bins for the experts predicting buy costs
 buy_rand_bins = np.random.permutation(buy_experts) # How we divide these bins
 buy_bin_ind = [] # To store the bin indices
@@ -228,18 +228,32 @@ for i in range(buy_num_bins) :
 loss_fault = []
 true_opt = []
 
+rand_bins = np.random.permutation(num_experts)
+Eps_x = np.zeros((T,num_experts)) # Noise for the experts predicting ski days
+Eps_b = np.zeros((T,buy_experts)) # Noise for the experts predicting buy cost
+bin_ind = []
+for i in range(num_bins) :
+	bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)])
+sigmas = np.linspace(1,20,num_bins)
+
+for i in range(num_bins) :
+	Eps_x[:,bin_ind[i]] = np.random.normal(0.0,sigmas[i],(T,int(num_experts/num_bins)))
+
+for i in range(buy_num_bins) :
+	Eps_b[:,buy_bin_ind[i]] = np.random.normal(0.0,b_sigmas[i],(T,int(buy_experts/buy_num_bins)))
+
 for j in range(2) :
 
 	# 1 iteration for the faulty buy costs
 	# 1 iteration for the case when the true buy cost is revealed
-	rand_bins = np.random.permutation(num_experts)
-	eps_x = np.zeros(num_experts)
-	eps_b = np.zeros(buy_experts)
-	bin_ind = []
-	for i in range(num_bins) :
-		bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)]) 
+	#rand_bins = np.random.permutation(num_experts)
+	#eps_x = np.zeros(num_experts)
+	#eps_b = np.zeros(buy_experts)
+	#bin_ind = []
+	#for i in range(num_bins) :
+	#	bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)]) 
 	loss = 0.0
-	sigmas = np.linspace(1,20,num_bins)
+	#sigmas = np.linspace(1,20,num_bins)
 	regret = []
 	cumul_m = np.zeros(num_experts)
 	w_t = np.ones(num_experts) # weights for the experts predicting the number of ski-ing days
@@ -247,10 +261,12 @@ for j in range(2) :
 
 	for t in range(T) :
 
-		for i in range(num_bins) :
-			eps_x[bin_ind[i]] = np.random.normal(0.0,sigmas[i],int(num_experts/num_bins))
-		for i in range(buy_num_bins) :
-			eps_b[buy_bin_ind[i]] = np.random.normal(0.0,b_sigmas[i],int(buy_experts/buy_num_bins))
+		#for i in range(num_bins) :
+		#	eps_x[bin_ind[i]] = np.random.normal(0.0,sigmas[i],int(num_experts/num_bins))
+		#for i in range(buy_num_bins) :
+		#	eps_b[buy_bin_ind[i]] = np.random.normal(0.0,b_sigmas[i],int(buy_experts/buy_num_bins))
+		eps_x = Eps_x[t]
+		eps_b = Eps_b[t]
 		b_pred = b_true[t] + eps_b # The predictions of the buy cost
 		if j == 0 :
 			#b_sample = 2*b_true[t]
