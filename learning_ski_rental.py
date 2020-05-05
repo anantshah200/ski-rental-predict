@@ -215,7 +215,7 @@ lam_regret = []
 #expert_range = [100] # Experts for predicting the number of ski-ing days
 num_experts = 100
 eps = np.sqrt(np.log(num_experts)/T)
-buy_experts = 50 # The experts predicting the buy cost
+buy_experts = 1000 # The experts predicting the buy cost
 eta_b = np.sqrt(np.log(buy_experts)/T)
 buy_num_bins = 50 # The numbers of bins the buy experts will be binned into
 b_sigmas = np.linspace(1,20,buy_num_bins) # The standard deviaiot of error for the bins for the experts predicting buy costs
@@ -224,6 +224,9 @@ buy_bin_ind = [] # To store the bin indices
 
 for i in range(buy_num_bins) :
 	buy_bin_ind.append(buy_rand_bins[int(i*buy_experts/buy_num_bins):int((i+1)*buy_experts/buy_num_bins)])
+
+loss_fault = []
+true_opt = []
 
 for j in range(2) :
 
@@ -250,6 +253,7 @@ for j in range(2) :
 			eps_b[buy_bin_ind[i]] = np.random.normal(0.0,b_sigmas[i],int(buy_experts/buy_num_bins))
 		b_pred = b_true[t] + eps_b # The predictions of the buy cost
 		if j == 0 :
+			#b_sample = 2*b_true[t]
 			b_p_t = b_w_t / np.sum(b_w_t)
 			b_sample = np.dot(b_p_t,b_pred) # The weighted average will give us a predicted buy cost
 		# Sample the b' prediction
@@ -267,12 +271,23 @@ for j in range(2) :
 		m = get_pred_loss_rand(b_t,x_t,b_sample,x_pred,lam,num_experts) # Vector of competitive ratios
 
 		loss += np.dot(p_t,m)
+
 		# Note that a higher ratio implies a larger loss so we should the decrease the weight of that expert more
 		w_t = w_t * np.exp(-eps*m)
-		b_w_t = b_w_t * np.exp(-eta_b*np.absolute(b_pred-b_t))
-		cumul_m = cumul_m + m
-		min_loss = np.amin(cumul_m)
-		regret.append(loss-min_loss)
+		b_w_t = b_w_t * np.exp(-eta_b*np.absolute((b_pred-b_t)/b_t))
+
+		# Calculate the regret for this case
+		if j == 0 :
+
+			m = get_pred_loss_rand(b_t,x_t,b_t,x_pred,lam,num_experts) # Want to compare with if true price told
+			cumul_m = cumul_m + m
+			min_loss = np.amin(cumul_m)
+			regret.append(loss-min_loss)
+		else :
+
+			cumul_m = cumul_m + m
+			min_loss = np.amin(cumul_m)
+			regret.append(loss-min_loss)
 
 	lam_regret.append(regret)
 
