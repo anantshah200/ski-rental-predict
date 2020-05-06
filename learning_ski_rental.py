@@ -29,7 +29,7 @@ def get_adv_loss(b_pred,x_pred,b_t,x_t) :
 			w.append(1)
 	return np.array(w)
 
-T = 5000
+T = 10000
 B_max = 200
 B_min = 100
 #for sigma in sigmas :
@@ -102,7 +102,7 @@ B_min = 100
 
 # Check the dependence of the regret on the lambda parameters. In the paper by Purohit et al, the deterministic and ranodmized algorithm have  a consistency and robustness tradeoff as a function of the parameter lambda. Now we want to see in the online learning setup what is the dependence of the regret on this parameter lambda. At each time-step we have a set of predictors, predicting the number of ski-ing days and some predicting the buy cost. Split them into bins with each bin having a certain standard deviation. Now sample a certain buy cost(b') and based on the predictions run the algorithm by Purohit et al. Compare this loss to the true algorithm whether to rent for all or buy at day 0 and check the regret. Compare for different values of lambda, check the effect of number of experts. Check the effect of standard deviation etc. We need to get the predictions for the number of ski-ing days, not randomly sample as there is no relation in the current implementation. Take an average of the prediction based on the weights and then give that to all the experts predicting the ski-days.
 
-# Experiments : 1.] Want to see how bad this implementation is versus had we told the experts the true buy cost : result surprisingly is not that bad !
+# Experiments : 1.] Want to see how bad this implementation is versus had we told the experts the true buy cost : result surprisingly is not that bad ! Obs : If i increase the number of buy experts, the algorithm performs worse than the optimal. Now lets change the number of experts predicting the number of ski-ing days.
 # 2.] Varied parameters lambda from 0.4 to 0.6. At 0.6 the regret was essentially the same. 
 # 3.] Now want to see if I vary the buy-cost experts what is the effect
 
@@ -198,9 +198,9 @@ def get_pred_loss_det(b_t,x_t,b_sample,x_pred,lam,num_experts) :
 	return m
 
 lams = [0.2,0.4,0.6,0.8] # Based on the algorithm by Purohit et al
-lam = 0.4
+#lam = 0.4
 b_true = np.random.randint(low=B_min,high=B_max,size=T)
-x_adv = np.random.randint(low=1,high=4*B_max,size=T)
+x_adv = np.random.randint(low=int(B_min/2),high=4*B_max,size=T)
 num_bins = 5 # Categorize the experts into bins based on their error of prediction
 #bin_vals = [2,4,8,20]
 #bin_ind = []
@@ -234,7 +234,7 @@ Eps_b = np.zeros((T,buy_experts)) # Noise for the experts predicting buy cost
 bin_ind = []
 for i in range(num_bins) :
 	bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)])
-sigmas = np.linspace(1,20,num_bins)
+sigmas = np.linspace(1,50,num_bins)
 
 for i in range(num_bins) :
 	Eps_x[:,bin_ind[i]] = np.random.normal(0.0,sigmas[i],(T,int(num_experts/num_bins)))
@@ -242,7 +242,7 @@ for i in range(num_bins) :
 for i in range(buy_num_bins) :
 	Eps_b[:,buy_bin_ind[i]] = np.random.normal(0.0,b_sigmas[i],(T,int(buy_experts/buy_num_bins)))
 
-for j in range(2) :
+for lam in lams :
 
 	# 1 iteration for the faulty buy costs
 	# 1 iteration for the case when the true buy cost is revealed
@@ -268,10 +268,11 @@ for j in range(2) :
 		eps_x = Eps_x[t]
 		eps_b = Eps_b[t]
 		b_pred = b_true[t] + eps_b # The predictions of the buy cost
-		if j == 0 :
+		#if j == 0 :
 			#b_sample = 2*b_true[t]
-			b_p_t = b_w_t / np.sum(b_w_t)
-			b_sample = np.dot(b_p_t,b_pred) # The weighted average will give us a predicted buy cost
+		b_p_t = b_w_t / np.sum(b_w_t)
+		b_sample = np.dot(b_p_t,b_pred) # The weighted average will give us a predicted buy cost
+
 		# Sample the b' prediction
 		x_pred = x_adv[t] + eps_x # The predicitons by the experts for the current time-instant
 
@@ -280,9 +281,9 @@ for j in range(2) :
 		x_t = x_adv[t] # The true number of ski-ing days. Not known to the algorithm. Used to calculate optimal cost
 		p_t = w_t/np.sum(w_t)
 
-		if j == 1 :
+		#if j == 1 :
 			# True buy cost revealed to the experts(just repeating Purohit et al for each iteration)
-			b_sample = b_t
+		#	b_sample = b_t
 
 		m = get_pred_loss_rand(b_t,x_t,b_sample,x_pred,lam,num_experts) # Vector of competitive ratios
 
@@ -293,17 +294,19 @@ for j in range(2) :
 		b_w_t = b_w_t * np.exp(-eta_b*np.absolute((b_pred-b_t)/b_t))
 
 		# Calculate the regret for this case
-		if j == 0 :
+		#if j == 0 :
 
-			m = get_pred_loss_rand(b_t,x_t,b_t,x_pred,lam,num_experts) # Want to compare with if true price told
-			cumul_m = cumul_m + m
-			min_loss = np.amin(cumul_m)
-			regret.append(loss-min_loss)
-		else :
+		m = get_pred_loss_rand(b_t,x_t,b_t,x_pred,lam,num_experts) # Want to compare with if true price told
+		cumul_m = cumul_m + m
+		min_loss = np.amin(cumul_m)
+		#min_loss = 0.0
+		regret.append(loss-min_loss)
+		#else :
 
-			cumul_m = cumul_m + m
-			min_loss = np.amin(cumul_m)
-			regret.append(loss-min_loss)
+		#cumul_m = cumul_m + m
+		#min_loss = np.amin(cumul_m)
+		#min_loss = 0.0
+		#regret.append(loss-min_loss)
 
 	lam_regret.append(regret)
 
@@ -317,10 +320,9 @@ for i in range(buy_num_bins) :
 
 for i in range(len(lam_regret)) :
 	plt.plot(range(1,T+1),lam_regret[i])
-#plt.legend([r'$\lambda = 0.2$',r'$\lambda = 0.4$',r'$\lambda = 0.6$',r'$\lambda = 0.8$'])
-plt.legend([r'Faulty Buy Experts',r'True Buy Cost'])
+plt.legend([r'$\lambda = 0.2$',r'$\lambda = 0.4$',r'$\lambda = 0.6$',r'$\lambda = 0.8$'])
 plt.xlabel('Time')
 plt.ylabel('Regret')
-plt.title(r'Comparison of faulty experts vs true expert $\lambda = %1.2f$'%lam)
+plt.title(r'experts=$100$. buy-experts=$500$.$ 1 \leq \sigma \leq 50 $')
 plt.grid('True')
 plt.show()
