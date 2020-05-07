@@ -197,8 +197,8 @@ def get_pred_loss_det(b_t,x_t,b_sample,x_pred,lam,num_experts) :
 	assert np.all(m>=0)
 	return m
 
-lams = [0.2,0.4,0.6,0.8] # Based on the algorithm by Purohit et al
-#lam = 0.4
+#lams = [0.2,0.4,0.6,0.8] # Based on the algorithm by Purohit et al
+lam = 0.5
 b_true = np.random.randint(low=B_min,high=B_max,size=T)
 x_adv = np.random.randint(low=int(B_min/2),high=4*B_max,size=T)
 num_bins = 5 # Categorize the experts into bins based on their error of prediction
@@ -216,34 +216,43 @@ lam_regret = []
 num_experts = 100
 eps = np.sqrt(np.log(num_experts)/T)
 buy_experts = 500 # The experts predicting the buy cost
+#buy_experts_list = [50,500]
 eta_b = np.sqrt(np.log(buy_experts)/T)
+
 buy_num_bins = 5 # The numbers of bins the buy experts will be binned into
-b_sigmas = np.linspace(1,20,buy_num_bins) # The standard deviaiot of error for the bins for the experts predicting buy costs
+test = 3
+start = [1,51,101]
+end = [50,100,150]
+
+b_sigmas = np.linspace(1,100,buy_num_bins) # The standard deviaiot of error for the bins for the experts predicting buy costs
 buy_rand_bins = np.random.permutation(buy_experts) # How we divide these bins
 buy_bin_ind = [] # To store the bin indices
 
 for i in range(buy_num_bins) :
 	buy_bin_ind.append(buy_rand_bins[int(i*buy_experts/buy_num_bins):int((i+1)*buy_experts/buy_num_bins)])
 
-loss_fault = []
-true_opt = []
+#loss_fault = []
+#true_opt = []
 
 rand_bins = np.random.permutation(num_experts)
 Eps_x = np.zeros((T,num_experts)) # Noise for the experts predicting ski days
 Eps_b = np.zeros((T,buy_experts)) # Noise for the experts predicting buy cost
 bin_ind = []
-for i in range(num_bins) :
-	bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)])
-sigmas = np.linspace(1,50,num_bins)
 
 for i in range(num_bins) :
-	Eps_x[:,bin_ind[i]] = np.random.normal(0.0,sigmas[i],(T,int(num_experts/num_bins)))
+	bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)])
+#sigmas = np.linspace(1,100,num_bins)
+
+#for i in range(num_bins) :
+#	Eps_x[:,bin_ind[i]] = np.random.normal(0.0,sigmas[i],(T,int(num_experts/num_bins)))
 
 for i in range(buy_num_bins) :
 	Eps_b[:,buy_bin_ind[i]] = np.random.normal(0.0,b_sigmas[i],(T,int(buy_experts/buy_num_bins)))
 
-for lam in lams :
+for sig in range(test) :
 
+	sigmas = np.linspace(start[sig],end[sig],num_bins)
+	print(sigmas)
 	# 1 iteration for the faulty buy costs
 	# 1 iteration for the case when the true buy cost is revealed
 	#rand_bins = np.random.permutation(num_experts)
@@ -252,6 +261,23 @@ for lam in lams :
 	#bin_ind = []
 	#for i in range(num_bins) :
 	#	bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)]) 
+
+	#eta_b = np.sqrt(np.log(buy_experts)/T)
+
+	#buy_rand_bins = np.random.permutation(buy_experts) # How we divide the buy experts
+	#buy_bin_ind = []
+
+	#for i in range(buy_num_bins) :
+	#	buy_bin_ind.append(buy_rand_bins[int(i*buy_experts/buy_num_bins):int((i+1)*buy_experts/buy_num_bins)])
+	
+	#Eps_b = np.zeros((T,buy_experts))
+
+	#for i in range(buy_num_bins) :
+	#	Eps_b[:,buy_bin_ind[i]] = np.random.normal(0.0,b_sigmas[i],(T,int(buy_experts/buy_num_bins)))
+
+	for i in range(num_bins) :
+		Eps_x[:,bin_ind[i]] = np.random.normal(0.0,sigmas[i],(T,int(num_experts/num_bins)))
+
 	loss = 0.0
 	#sigmas = np.linspace(1,20,num_bins)
 	regret = []
@@ -320,9 +346,9 @@ for i in range(buy_num_bins) :
 
 for i in range(len(lam_regret)) :
 	plt.plot(range(1,T+1),lam_regret[i])
-plt.legend([r'$\lambda = 0.2$',r'$\lambda = 0.4$',r'$\lambda = 0.6$',r'$\lambda = 0.8$'])
+plt.legend([r'$1 \leq \sigma_{x} \leq 50$',r'$51 \leq \sigma_{x} \leq 100$',r'$101 \leq \sigma_{x} \leq 150$'])
 plt.xlabel('Time')
 plt.ylabel('Regret')
-plt.title(r'experts=$100$. buy-experts=$500$.$ 1 \leq \sigma \leq 50 $')
+plt.title(r'experts=$100$.$\lambda = 0.5$.buy-experts=500.$1 \leq \sigma_{b} \leq 100$')
 plt.grid('True')
 plt.show()
