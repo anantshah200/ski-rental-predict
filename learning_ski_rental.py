@@ -30,8 +30,8 @@ def get_adv_loss(b_pred,x_pred,b_t,x_t) :
 	return np.array(w)
 
 T = 10000
-B_max = 200
-B_min = 100
+B_max = 100
+B_min = 50
 #for sigma in sigmas :
 #	b_true = np.random.uniform(low=B_min,high=B_max,size=T)
 #	x_adv = np.random.uniform(low=B_min,high=2*B_max,size=T)
@@ -219,7 +219,8 @@ def get_action(dist,size) :
 #lams = [0.3,0.7]
 lams = [0.5]
 b_true = np.random.randint(low=B_min,high=B_max,size=T)
-x_adv = np.random.randint(low=int(B_min/2),high=4*B_max,size=T)
+#x_adv = np.random.randint(low=int(B_min/2),high=4*B_max,size=T)
+x_adv = np.random.randint(low=B_min,high=3*B_max,size=T)
 num_bins = 5 # Categorize the experts into bins based on their error of prediction
 #bin_vals = [2,4,8,20]
 #bin_ind = []
@@ -242,7 +243,7 @@ buy_num_bins = 5 # The numbers of bins the buy experts will be binned into
 #start = [1,51,101]
 #end = [50,100,150]
 
-b_sigmas = np.linspace(50,100,buy_num_bins) # The standard deviaiot of error for the bins for the experts predicting buy costs
+b_sigmas = np.linspace(1,100,buy_num_bins) # The standard deviaiot of error for the bins for the experts predicting buy costs
 buy_rand_bins = np.random.permutation(buy_experts) # How we divide these bins
 buy_bin_ind = [] # To store the bin indices
 
@@ -256,7 +257,7 @@ bin_ind = []
 
 for i in range(num_bins) :
 	bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)])
-sigmas = np.linspace(50,100,num_bins)
+sigmas = np.linspace(1,100,num_bins)
 
 for i in range(num_bins) :
 	Eps_x[:,bin_ind[i]] = np.random.normal(0.0,sigmas[i],(T,int(num_experts/num_bins)))
@@ -325,9 +326,9 @@ for lam in lams :
 
 		m = get_pred_loss_rand(b_t,x_t,b_sample,x_pred,lam,num_experts) # Vector of competitive ratios
 
-		#loss += np.dot(p_t,m)
+		loss += np.dot(p_t,m)
 		#loss = np.dot(p_t,m)
-		loss = np.amin(m[x_exp])
+		#loss = np.amin(m[x_exp])
 
 		# Note that a higher ratio implies a larger loss so we should the decrease the weight of that expert more
 		w_t = w_t * np.exp(-eps*m)
@@ -342,8 +343,9 @@ for lam in lams :
 		b_w_t = b_w_t * np.exp(-eta_b*np.absolute((b_pred-b_t)/b_t))
 
 		m = get_pred_loss_rand(b_t,x_t,b_t,x_pred,lam,num_experts) # Want to compare with if true price told
-		#cumul_m = cumul_m + m
-		min_loss = np.amin(m)
+		cumul_m = cumul_m + m
+		min_loss = np.amin(cumul_m)
+		#min_loss = np.amin(m)
 		regret.append(loss-min_loss)
 
 	lam_regret.append(regret)
