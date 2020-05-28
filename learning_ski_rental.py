@@ -3,6 +3,9 @@
 # Author : Anant Shah
 # E-Mail : anantshah200@gmail.com
 
+import mpl_toolkits
+from mpl_toolkits.mplot3d import Axes3D
+
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
@@ -29,9 +32,9 @@ def get_adv_loss(b_pred,x_pred,b_t,x_t) :
 			w.append(1)
 	return np.array(w)
 
-T = 10000
+T = 2000
 B_max = 100
-B_min = 50
+B_min = 1
 #for sigma in sigmas :
 #	b_true = np.random.uniform(low=B_min,high=B_max,size=T)
 #	x_adv = np.random.uniform(low=B_min,high=2*B_max,size=T)
@@ -215,33 +218,29 @@ def get_action(dist,size) :
 			break
 	return arm
 
+# I need to iterate over different ranges of supports for the ski days and the ski cost
+
 #lams = [0.2,0.4,0.6,0.8] # Based on the algorithm by Purohit et al
 #lams = [0.3,0.7]
-lams = [0.5]
-b_true = np.random.randint(low=B_min,high=B_max,size=T)
+#lams = [0.5]
+lam = 0.5
+init = [1,20,40,60,80,100]
+#init = [1,50]
+#b_true = np.random.randint(low=B_min,high=B_max,size=T)
 #x_adv = np.random.randint(low=int(B_min/2),high=4*B_max,size=T)
-x_adv = np.random.randint(low=B_min,high=3*B_max,size=T)
+#x_adv = np.random.randint(low=25*B_min,high=4*B_max,size=T)
 num_bins = 5 # Categorize the experts into bins based on their error of prediction
-#bin_vals = [2,4,8,20]
-#bin_ind = []
-#rand_bins = np.random.permutation(num_experts)
-#sigmas = [1,20] # The number of sigmas will be equal to the number of bins
-#num_buy = 50
-
-#for i in range(num_bins) :
-#	bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)])
 
 lam_regret = []
-#expert_range = [100] # Experts for predicting the number of ski-ing days
+b_regret = []
+per_agent_regret = []
+overlap = [] # The overlapping area between the supports as a decimal
 num_experts = 100
 eps = np.sqrt(np.log(num_experts)/T)
 buy_experts = 100 # The experts predicting the buy cost
-#buy_experts_list = [50,500]
 eta_b = np.sqrt(np.log(buy_experts)/T)
 
 buy_num_bins = 5 # The numbers of bins the buy experts will be binned into
-#start = [1,51,101]
-#end = [50,100,150]
 
 b_sigmas = np.linspace(1,100,buy_num_bins) # The standard deviaiot of error for the bins for the experts predicting buy costs
 buy_rand_bins = np.random.permutation(buy_experts) # How we divide these bins
@@ -265,8 +264,12 @@ for i in range(num_bins) :
 for i in range(buy_num_bins) :
 	Eps_b[:,buy_bin_ind[i]] = np.random.normal(0.0,b_sigmas[i],(T,int(buy_experts/buy_num_bins)))
 
-for lam in lams :
+#for lam in lams :
+for num in init :
 
+	b_true  = np.random.randint(low=B_min,high=B_max,size=T)
+	x_adv = np.random.randint(low=num*B_min,high=2*B_max,size=T)
+	overlap.append((B_max-num*B_min)/(B_max-B_min))
 	#sigmas = np.linspace(start[sig],end[sig],num_bins)
 	#print(sigmas)
 	# 1 iteration for the faulty buy costs
@@ -288,18 +291,21 @@ for lam in lams :
 	
 	#Eps_b = np.zeros((T,buy_experts))
 
-	#for i in range(buy_num_bins) :
-	#	Eps_b[:,buy_bin_ind[i]] = np.random.normal(0.0,b_sigmas[i],(T,int(buy_experts/buy_num_bins)))
+	for i in range(buy_num_bins) :
+		Eps_b[:,buy_bin_ind[i]] = np.random.normal(0.0,b_sigmas[i],(T,int(buy_experts/buy_num_bins)))
 
-	#for i in range(num_bins) :
-	#	Eps_x[:,bin_ind[i]] = np.random.normal(0.0,sigmas[i],(T,int(num_experts/num_bins)))
+	for i in range(num_bins) :
+		Eps_x[:,bin_ind[i]] = np.random.normal(0.0,sigmas[i],(T,int(num_experts/num_bins)))
 
 	print(lam)
 
 	loss = 0.0
 	#sigmas = np.linspace(1,20,num_bins)
 	regret = []
+	b_diff = []
+	agent_regret = [] # List to store the regret per agent
 	cumul_m = np.zeros(num_experts)
+	cumul_ski_loss = np.zeros(num_experts) # To store the cumulative loss for the ski experts
 	w_t = np.ones(num_experts) # weights for the experts predicting the number of ski-ing days
 	b_w_t = np.ones(buy_experts) # weights for experts predicting the buy cost of the ski-is
 
@@ -326,8 +332,9 @@ for lam in lams :
 
 		m = get_pred_loss_rand(b_t,x_t,b_sample,x_pred,lam,num_experts) # Vector of competitive ratios
 
-		loss += np.dot(p_t,m)
-		#loss = np.dot(p_t,m)
+		cumul_ski_loss += m
+		#loss += np.dot(p_t,m)
+		loss = np.dot(p_t,m)
 		#loss = np.amin(m[x_exp])
 
 		# Note that a higher ratio implies a larger loss so we should the decrease the weight of that expert more
@@ -344,11 +351,14 @@ for lam in lams :
 
 		m = get_pred_loss_rand(b_t,x_t,b_t,x_pred,lam,num_experts) # Want to compare with if true price told
 		cumul_m = cumul_m + m
-		min_loss = np.amin(cumul_m)
-		#min_loss = np.amin(m)
+		#min_loss = np.amin(cumul_m)
+		min_loss = np.amin(m)
 		regret.append(loss-min_loss)
+		b_diff.append(np.absolute(b_sample-b_t))
 
+	per_agent_regret.append((cumul_ski_loss-np.amin(cumul_m))/T)
 	lam_regret.append(regret)
+	b_regret.append(b_diff)
 
 # Expect to be in descending order
 for i in range(num_bins) :
@@ -361,8 +371,38 @@ for i in range(buy_num_bins) :
 for j in range(len(lam_regret)) :
 	plt.plot(range(1,T+1),lam_regret[j])
 #plt.legend([r'$1 \leq \sigma_{x} \leq 50$',r'$51 \leq \sigma_{x} \leq 100$',r'$101 \leq \sigma_{x} \leq 150$'])
+#plt.legend([r'$\lambda = 0.5$',r'$\lambda = 0.4$',r'$\lambda = 0.6$',r'$\lambda = 0.8$'])
+plt.xlabel('Time')
+plt.ylabel('Per Round Regret')
+plt.title(r'experts=$100$.buy-experts=100.$1 \leq \sigma_{b} \leq 100$.$1 \leq \sigma_{x} \leq 100$.$\lambda = 0.5$.$50 \leq x^{t} \leq 400$.$50 \leq b^{t} \leq 100$')
+plt.show()
+
+for j in range(len(b_regret)) :
+	plt.plot(range(1,T+1),b_regret[j])
 plt.legend([r'$\lambda = 0.5$',r'$\lambda = 0.4$',r'$\lambda = 0.6$',r'$\lambda = 0.8$'])
 plt.xlabel('Time')
-plt.ylabel('Regret')
-plt.title(r'experts=$100$.buy-experts=100.$1 \leq \sigma_{b} \leq 100$.$1 \leq \sigma_{x} \leq 100$')
+plt.ylabel('Buy Cost Absolute Difference')
+plt.title(r'experts=$100$.buy-experts=100.$1 \leq \sigma_{b} \leq 100$.$1 \leq \sigma_{x} \leq 100$.$\lambda = 0.5$.$1 \leq x^{t} \leq 200$.$50 \leq b^{t} \leq 100$')
+plt.show()
+
+fig = plt.figure()
+ax = fig.add_subplot(111,projection='3d')
+
+#xs = overlap
+#ys = sigmas
+ys = np.ones(num_experts)
+for i in range(num_bins) :
+	# Genreate the x-axis and y-axis coordinate for each expert
+	ys[bin_ind[i]] = sigmas[i]	
+
+mark = ['o','^','<','v','1','2']
+for i in range(len(init)) :
+	xs = np.ones(num_experts)*overlap[i]
+	zs = per_agent_regret[i]
+	ax.scatter(xs,ys,zs,marker=mark[i])
+
+ax.set_xlabel('Overlap')
+ax.set_ylabel('Error Standard Deviation')
+ax.set_zlabel('Regret over T rounds')
+
 plt.show()
