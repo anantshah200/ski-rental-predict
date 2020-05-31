@@ -3,8 +3,8 @@
 # Author : Anant Shah
 # E-Mail : anantshah200@gmail.com
 
-import mpl_toolkits
-from mpl_toolkits.mplot3d import Axes3D
+#import mpl_toolkits
+#from mpl_toolkits.mplot3d import Axes3D
 
 import numpy as np
 import scipy as sp
@@ -33,8 +33,8 @@ def get_adv_loss(b_pred,x_pred,b_t,x_t) :
 	return np.array(w)
 
 T = 2000
-B_max = 100
-B_min = 1
+B_max = 400
+B_min = 100
 #for sigma in sigmas :
 #	b_true = np.random.uniform(low=B_min,high=B_max,size=T)
 #	x_adv = np.random.uniform(low=B_min,high=2*B_max,size=T)
@@ -224,7 +224,9 @@ def get_action(dist,size) :
 #lams = [0.3,0.7]
 #lams = [0.5]
 lam = 0.5
-init = [1,20,40,60,80,100]
+#init = [1,101,201,301]
+init = [100]
+#init = [1,20,40,60,80,100]
 #init = [1,50]
 #b_true = np.random.randint(low=B_min,high=B_max,size=T)
 #x_adv = np.random.randint(low=int(B_min/2),high=4*B_max,size=T)
@@ -268,8 +270,9 @@ for i in range(buy_num_bins) :
 for num in init :
 
 	b_true  = np.random.randint(low=B_min,high=B_max,size=T)
-	x_adv = np.random.randint(low=num*B_min,high=2*B_max,size=T)
-	overlap.append((B_max-num*B_min)/(B_max-B_min))
+	x_adv = np.random.randint(low=1,high=50,size=T)
+	#overlap.append((B_max-num*B_min)/(B_max-B_min))
+	overlap.append((num-1)/B_max + 1)
 	#sigmas = np.linspace(start[sig],end[sig],num_bins)
 	#print(sigmas)
 	# 1 iteration for the faulty buy costs
@@ -333,8 +336,8 @@ for num in init :
 		m = get_pred_loss_rand(b_t,x_t,b_sample,x_pred,lam,num_experts) # Vector of competitive ratios
 
 		cumul_ski_loss += m
-		#loss += np.dot(p_t,m)
-		loss = np.dot(p_t,m)
+		loss += np.dot(p_t,m)
+		#loss = np.dot(p_t,m)
 		#loss = np.amin(m[x_exp])
 
 		# Note that a higher ratio implies a larger loss so we should the decrease the weight of that expert more
@@ -351,8 +354,8 @@ for num in init :
 
 		m = get_pred_loss_rand(b_t,x_t,b_t,x_pred,lam,num_experts) # Want to compare with if true price told
 		cumul_m = cumul_m + m
-		#min_loss = np.amin(cumul_m)
-		min_loss = np.amin(m)
+		min_loss = np.amin(cumul_m)
+		#min_loss = np.amin(m)
 		regret.append(loss-min_loss)
 		b_diff.append(np.absolute(b_sample-b_t))
 
@@ -401,8 +404,9 @@ for i in range(len(init)) :
 	zs = per_agent_regret[i]
 	ax.scatter(xs,ys,zs,marker=mark[i])
 
-ax.set_xlabel('Overlap')
+ax.set_xlabel(r'Range Scale($i*B_{min} \leq x^{t} \leq i*B_{max}$)')
 ax.set_ylabel('Error Standard Deviation')
 ax.set_zlabel('Regret over T rounds')
 
+plt.title(r'$B_{min}=1, B_{max}=100$')
 plt.show()
