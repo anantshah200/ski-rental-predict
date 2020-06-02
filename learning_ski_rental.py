@@ -32,9 +32,9 @@ def get_adv_loss(b_pred,x_pred,b_t,x_t) :
 			w.append(1)
 	return np.array(w)
 
-T = 2000
-B_max = 400
-B_min = 100
+T = 10000
+B_max = 100
+B_min = 50
 #for sigma in sigmas :
 #	b_true = np.random.uniform(low=B_min,high=B_max,size=T)
 #	x_adv = np.random.uniform(low=B_min,high=2*B_max,size=T)
@@ -223,9 +223,9 @@ def get_action(dist,size) :
 #lams = [0.2,0.4,0.6,0.8] # Based on the algorithm by Purohit et al
 #lams = [0.3,0.7]
 #lams = [0.5]
-lam = 0.5
-#init = [1,101,201,301]
-init = [100]
+lam = 0.6
+#init = [1,201,401,601]
+init = [5,50,100]
 #init = [1,20,40,60,80,100]
 #init = [1,50]
 #b_true = np.random.randint(low=B_min,high=B_max,size=T)
@@ -237,62 +237,69 @@ lam_regret = []
 b_regret = []
 per_agent_regret = []
 overlap = [] # The overlapping area between the supports as a decimal
-num_experts = 100
-eps = np.sqrt(np.log(num_experts)/T)
-buy_experts = 100 # The experts predicting the buy cost
-eta_b = np.sqrt(np.log(buy_experts)/T)
+#num_experts = 100
+#eps = np.sqrt(np.log(num_experts)/T)
+#buy_experts = 100 # The experts predicting the buy cost
+#eta_b = np.sqrt(np.log(buy_experts)/T)
 
 buy_num_bins = 5 # The numbers of bins the buy experts will be binned into
 
 b_sigmas = np.linspace(1,100,buy_num_bins) # The standard deviaiot of error for the bins for the experts predicting buy costs
-buy_rand_bins = np.random.permutation(buy_experts) # How we divide these bins
-buy_bin_ind = [] # To store the bin indices
+#buy_rand_bins = np.random.permutation(buy_experts) # How we divide these bins
+#buy_bin_ind = [] # To store the bin indices
 
-for i in range(buy_num_bins) :
-	buy_bin_ind.append(buy_rand_bins[int(i*buy_experts/buy_num_bins):int((i+1)*buy_experts/buy_num_bins)])
+#for i in range(buy_num_bins) :
+#	buy_bin_ind.append(buy_rand_bins[int(i*buy_experts/buy_num_bins):int((i+1)*buy_experts/buy_num_bins)])
 
-rand_bins = np.random.permutation(num_experts)
-Eps_x = np.zeros((T,num_experts)) # Noise for the experts predicting ski days
-Eps_b = np.zeros((T,buy_experts)) # Noise for the experts predicting buy cost
-bin_ind = []
+#rand_bins = np.random.permutation(num_experts)
+#Eps_x = np.zeros((T,num_experts)) # Noise for the experts predicting ski days
+#Eps_b = np.zeros((T,buy_experts)) # Noise for the experts predicting buy cost
+#bin_ind = []
 
-for i in range(num_bins) :
-	bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)])
-sigmas = np.linspace(1,100,num_bins)
+#for i in range(num_bins) :
+#	bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)])
+sigmas = np.linspace(50,100,num_bins)
 
-for i in range(num_bins) :
-	Eps_x[:,bin_ind[i]] = np.random.normal(0.0,sigmas[i],(T,int(num_experts/num_bins)))
+#for i in range(num_bins) :
+#	Eps_x[:,bin_ind[i]] = np.random.normal(0.0,sigmas[i],(T,int(num_experts/num_bins)))
 
-for i in range(buy_num_bins) :
-	Eps_b[:,buy_bin_ind[i]] = np.random.normal(0.0,b_sigmas[i],(T,int(buy_experts/buy_num_bins)))
+#for i in range(buy_num_bins) :
+#	Eps_b[:,buy_bin_ind[i]] = np.random.normal(0.0,b_sigmas[i],(T,int(buy_experts/buy_num_bins)))
 
 #for lam in lams :
-for num in init :
+for num_experts in init :
 
 	b_true  = np.random.randint(low=B_min,high=B_max,size=T)
-	x_adv = np.random.randint(low=1,high=50,size=T)
+	x_adv = np.random.randint(low=50,high=100,size=T)
 	#overlap.append((B_max-num*B_min)/(B_max-B_min))
-	overlap.append((num-1)/B_max + 1)
+	overlap.append(num_experts)
+	buy_experts = num_experts
 	#sigmas = np.linspace(start[sig],end[sig],num_bins)
 	#print(sigmas)
 	# 1 iteration for the faulty buy costs
 	# 1 iteration for the case when the true buy cost is revealed
-	#rand_bins = np.random.permutation(num_experts)
-	#eps_x = np.zeros(num_experts)
-	#eps_b = np.zeros(buy_experts)
-	#bin_ind = []
-	#for i in range(num_bins) :
-	#	bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)]) 
 
-	#eta_b = np.sqrt(np.log(buy_experts)/T)
+	eps = np.sqrt(np.log(num_experts)/T)
+	eta_b = np.sqrt(np.log(buy_experts)/T)
 
-	#buy_rand_bins = np.random.permutation(buy_experts) # How we divide the buy experts
-	#buy_bin_ind = []
+	rand_bins = np.random.permutation(num_experts)
+	eps_x = np.zeros(num_experts)
+	eps_b = np.zeros(buy_experts)
+	Eps_x = np.zeros((T,num_experts))
+	Eps_b = np.zeros((T,buy_experts))
+	bin_ind = []
+	for i in range(num_bins) :
+		bin_ind.append(rand_bins[int(i*num_experts/num_bins):int((i+1)*num_experts/num_bins)]) 
 
-	#for i in range(buy_num_bins) :
-	#	buy_bin_ind.append(buy_rand_bins[int(i*buy_experts/buy_num_bins):int((i+1)*buy_experts/buy_num_bins)])
+	eta_b = np.sqrt(np.log(buy_experts)/T)
+
+	buy_rand_bins = np.random.permutation(buy_experts) # How we divide the buy experts
+	buy_bin_ind = []
+
+	for i in range(buy_num_bins) :
+		buy_bin_ind.append(buy_rand_bins[int(i*buy_experts/buy_num_bins):int((i+1)*buy_experts/buy_num_bins)])
 	
-	#Eps_b = np.zeros((T,buy_experts))
+	Eps_b = np.zeros((T,buy_experts))
 
 	for i in range(buy_num_bins) :
 		Eps_b[:,buy_bin_ind[i]] = np.random.normal(0.0,b_sigmas[i],(T,int(buy_experts/buy_num_bins)))
@@ -376,8 +383,10 @@ for j in range(len(lam_regret)) :
 #plt.legend([r'$1 \leq \sigma_{x} \leq 50$',r'$51 \leq \sigma_{x} \leq 100$',r'$101 \leq \sigma_{x} \leq 150$'])
 #plt.legend([r'$\lambda = 0.5$',r'$\lambda = 0.4$',r'$\lambda = 0.6$',r'$\lambda = 0.8$'])
 plt.xlabel('Time')
-plt.ylabel('Per Round Regret')
-plt.title(r'experts=$100$.buy-experts=100.$1 \leq \sigma_{b} \leq 100$.$1 \leq \sigma_{x} \leq 100$.$\lambda = 0.5$.$50 \leq x^{t} \leq 400$.$50 \leq b^{t} \leq 100$')
+plt.ylabel('Regret')
+plt.title(r'$1 \leq \sigma_{b} \leq 100$.$50 \leq \sigma_{x} \leq 100$.$\lambda = 0.5$.$50 \leq b^{t} \leq 100$.$50 \leq x^{t} \leq 100$')
+#plt.legend([r'$1 \leq x^{t} \leq 50$',r'$201 \leq x^{t} \leq 250$',r'$401 \leq x^{t} \leq 450$',r'$601 \leq x^{t} \leq 650$'])
+plt.legend([r'num_experts=5',r'num_experts=50',r'num_experts=100'])
 plt.show()
 
 for j in range(len(b_regret)) :
@@ -385,7 +394,8 @@ for j in range(len(b_regret)) :
 plt.legend([r'$\lambda = 0.5$',r'$\lambda = 0.4$',r'$\lambda = 0.6$',r'$\lambda = 0.8$'])
 plt.xlabel('Time')
 plt.ylabel('Buy Cost Absolute Difference')
-plt.title(r'experts=$100$.buy-experts=100.$1 \leq \sigma_{b} \leq 100$.$1 \leq \sigma_{x} \leq 100$.$\lambda = 0.5$.$1 \leq x^{t} \leq 200$.$50 \leq b^{t} \leq 100$')
+plt.title(r'experts=$100$.buy-experts=100.$1 \leq \sigma_{b} \leq 100$.$1 \leq \sigma_{x} \leq 100$.$\lambda = 0.5$.$1 \leq b^{t} \leq 50$')
+plt.legend([r'1 \leq x^{t} \leq 50',r'201 \leq x^{t} \leq 250',r'401 \leq x^{t} \leq 450',r'601 \leq x^{t} \leq 650'])
 plt.show()
 
 fig = plt.figure()
@@ -404,9 +414,10 @@ for i in range(len(init)) :
 	zs = per_agent_regret[i]
 	ax.scatter(xs,ys,zs,marker=mark[i])
 
-ax.set_xlabel(r'Range Scale($i*B_{min} \leq x^{t} \leq i*B_{max}$)')
+#ax.set_xlabel(r'Range Scale($i*B_{max} \leq x^{t} \leq (i+1)*B_{max}$)')
+ax.set_xlabel(r'Number of Experts')
 ax.set_ylabel('Error Standard Deviation')
 ax.set_zlabel('Regret over T rounds')
 
-plt.title(r'$B_{min}=1, B_{max}=100$')
+plt.title(r'$B_{min}=1, B_{max}=50$')
 plt.show()
